@@ -393,7 +393,7 @@ alter table t_ds_task_instance add first_submit_time datetime DEFAULT NULL COMME
 alter table t_ds_task_instance add delay_time int(4) DEFAULT '0' COMMENT 'task delay execution time' AFTER first_submit_time;
 alter table t_ds_task_instance add var_pool longtext COMMENT 'var_pool' AFTER delay_time;
 alter table t_ds_task_instance add dry_run tinyint(4) DEFAULT '0' COMMENT 'dry run flag：0 normal, 1 dry run' AFTER var_pool;
-alter table t_ds_task_instance drop KEY `task_instance_index`;
+--alter table t_ds_task_instance drop KEY `task_instance_index`;
 alter table t_ds_task_instance drop task_json;
 
 -- t_ds_schedules

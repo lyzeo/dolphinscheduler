@@ -118,6 +118,7 @@ public class DolphinSchedulerManager {
 
             if (SchemaUtils.isAGreatVersion("2.0.6", currentVersion) && SchemaUtils.isAGreatVersion(SchemaUtils.getSoftVersion(), currentVersion)) {
                 upgradeDao.upgradeDolphinSchedulerResourceFileSize();
+                upgradeDao.updateWalmartAlert();
             }
         }
 

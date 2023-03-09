@@ -17,6 +17,7 @@
 package org.apache.dolphinscheduler.dao.upgrade;
 
 import org.apache.dolphinscheduler.common.utils.ConnectionUtils;
+import org.apache.dolphinscheduler.dao.upgrade.walmart.WalmartUpgradeDao;
 import org.apache.dolphinscheduler.spi.enums.DbType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,8 +34,8 @@ import java.sql.SQLException;
 public class MysqlUpgradeDao extends UpgradeDao {
     public static final Logger logger = LoggerFactory.getLogger(MysqlUpgradeDao.class);
 
-    private MysqlUpgradeDao(DataSource dataSource) {
-        super(dataSource);
+    private MysqlUpgradeDao(DataSource dataSource, WalmartUpgradeDao walmartUpgradeDao) {
+        super(dataSource, walmartUpgradeDao);
     }
 
     @Override

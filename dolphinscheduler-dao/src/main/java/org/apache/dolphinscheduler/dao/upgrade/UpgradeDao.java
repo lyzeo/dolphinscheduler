@@ -33,6 +33,7 @@ import org.apache.dolphinscheduler.dao.entity.ProcessDefinition;
 import org.apache.dolphinscheduler.dao.entity.ProcessDefinitionLog;
 import org.apache.dolphinscheduler.dao.entity.ProcessTaskRelationLog;
 import org.apache.dolphinscheduler.dao.entity.TaskDefinitionLog;
+import org.apache.dolphinscheduler.dao.upgrade.walmart.WalmartUpgradeDao;
 import org.apache.dolphinscheduler.spi.enums.DbType;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -46,12 +47,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
@@ -74,8 +70,11 @@ public abstract class UpgradeDao {
 
     protected final DataSource dataSource;
 
-    protected UpgradeDao(DataSource dataSource) {
+    protected final WalmartUpgradeDao walmartUpgradeDao;
+
+    protected UpgradeDao(DataSource dataSource, WalmartUpgradeDao walmartUpgradeDao) {
         this.dataSource = dataSource;
+        this.walmartUpgradeDao = walmartUpgradeDao;
     }
 
     protected abstract String initSqlPath();
@@ -237,26 +236,32 @@ public abstract class UpgradeDao {
                     ObjectNode task = (ObjectNode) tasks.get(i);
                     ObjectNode param = (ObjectNode) task.get("params");
                     if (param != null) {
+                        JsonNode resourceListNode = param.get("resourceList");
+                        if (Objects.nonNull(resourceListNode)) {
+                            List<ResourceInfo> resourceList = JSONUtils.toList(resourceListNode.toString(), ResourceInfo.class);
 
-                        List<ResourceInfo> resourceList = JSONUtils.toList(param.get("resourceList").toString(), ResourceInfo.class);
-                        ResourceInfo mainJar = JSONUtils.parseObject(param.get("mainJar").toString(), ResourceInfo.class);
-                        if (mainJar != null && mainJar.getId() == 0) {
-                            String fullName = mainJar.getRes().startsWith("/") ? mainJar.getRes() : String.format("/%s", mainJar.getRes());
-                            if (resourcesMap.containsKey(fullName)) {
-                                mainJar.setId(resourcesMap.get(fullName));
-                                param.put("mainJar", JSONUtils.parseObject(JSONUtils.toJsonString(mainJar)));
-                            }
-                        }
-
-                        if (CollectionUtils.isNotEmpty(resourceList)) {
-                            List<ResourceInfo> newResourceList = resourceList.stream().map(resInfo -> {
-                                String fullName = resInfo.getRes().startsWith("/") ? resInfo.getRes() : String.format("/%s", resInfo.getRes());
-                                if (resInfo.getId() == 0 && resourcesMap.containsKey(fullName)) {
-                                    resInfo.setId(resourcesMap.get(fullName));
+                            JsonNode mainJarNode = param.get("mainJar");
+                            if (Objects.nonNull(mainJarNode)) {
+                                ResourceInfo mainJar = JSONUtils.parseObject(mainJarNode.toString(), ResourceInfo.class);
+                                if (mainJar != null && mainJar.getId() == 0) {
+                                    String fullName = mainJar.getRes().startsWith("/") ? mainJar.getRes() : String.format("/%s", mainJar.getRes());
+                                    if (resourcesMap.containsKey(fullName)) {
+                                        mainJar.setId(resourcesMap.get(fullName));
+                                        param.put("mainJar", JSONUtils.parseObject(JSONUtils.toJsonString(mainJar)));
+                                    }
                                 }
-                                return resInfo;
-                            }).collect(Collectors.toList());
-                            param.put("resourceList", JSONUtils.parseObject(JSONUtils.toJsonString(newResourceList)));
+                            }
+
+                            if (CollectionUtils.isNotEmpty(resourceList)) {
+                                List<ResourceInfo> newResourceList = resourceList.stream().map(resInfo -> {
+                                    String fullName = resInfo.getRes().startsWith("/") ? resInfo.getRes() : String.format("/%s", resInfo.getRes());
+                                    if (resInfo.getId() == 0 && resourcesMap.containsKey(fullName)) {
+                                        resInfo.setId(resourcesMap.get(fullName));
+                                    }
+                                    return resInfo;
+                                }).collect(Collectors.toList());
+                                param.put("resourceList", JSONUtils.toJsonNode(newResourceList));
+                            }
                         }
                     }
                     task.put("params", param);
@@ -486,7 +491,7 @@ public abstract class UpgradeDao {
                     if (TaskType.SUB_PROCESS.getDesc().equals(taskType)) {
                         JsonNode jsonNodeDefinitionId = param.get("processDefinitionId");
                         if (jsonNodeDefinitionId != null) {
-                            param.put("processDefinitionCode", processDefinitionMap.get(jsonNodeDefinitionId.asInt()).getCode());
+                            param.put("processDefinitionCode", jsonNodeDefinitionId.asInt());
                             param.remove("processDefinitionId");
                         }
                     }
@@ -593,8 +598,10 @@ public abstract class UpgradeDao {
             ObjectNode nodes = JSONUtils.createObjectNode();
             nodes.put("taskCode", taskIdCodeMap.get(entry.getKey()));
             ObjectNode oldNodes = entry.getValue();
-            nodes.put("x", oldNodes.get("x").asInt());
-            nodes.put("y", oldNodes.get("y").asInt());
+            int x = Optional.ofNullable(oldNodes.get("x")).map(JsonNode::asInt).orElse(0);
+            int y = Optional.ofNullable(oldNodes.get("y")).map(JsonNode::asInt).orElse(0);
+            nodes.put("x", x);
+            nodes.put("y", y);
             jsonNodes.add(nodes);
         }
         return jsonNodes.toString();
@@ -682,5 +689,18 @@ public abstract class UpgradeDao {
         processTaskRelationLog.setCreateTime(now);
         processTaskRelationLog.setUpdateTime(now);
         return processTaskRelationLog;
+    }
+
+    public void updateWalmartAlert() {
+        try {
+            walmartUpgradeDao.upgradeAlert(dataSource.getConnection());
+        } catch (SQLException e) {
+            logger.error(e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void updateWalmartDDL() {
+
     }
 }
