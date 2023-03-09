@@ -435,7 +435,7 @@ public abstract class UpgradeDao {
             List<TaskDefinitionLog> taskDefinitionLogs = new ArrayList<>();
             Map<Integer, Map<Long, Map<String, Long>>> processTaskMap = new HashMap<>();
             splitProcessDefinitionJson(processDefinitions, processDefinitionJsonMap, processDefinitionLogs, processTaskRelationLogs, taskDefinitionLogs, processTaskMap);
-            convertDependence(taskDefinitionLogs, projectIdCodeMap, processTaskMap);
+            convertWalmartDependence(taskDefinitionLogs);
 
             // execute json split
             jsonSplitDao.executeJsonSplitProcessDefinition(dataSource.getConnection(), processDefinitionLogs);
@@ -607,6 +607,7 @@ public abstract class UpgradeDao {
         return jsonNodes.toString();
     }
 
+    @Deprecated
     public void convertDependence(List<TaskDefinitionLog> taskDefinitionLogs,
                                   Map<Integer, Long> projectIdCodeMap,
                                   Map<Integer, Map<Long, Map<String, Long>>> processTaskMap) {
@@ -701,6 +702,41 @@ public abstract class UpgradeDao {
     }
 
     public void updateWalmartDDL() {
+
+    }
+
+    public void convertWalmartDependence(List<TaskDefinitionLog> taskDefinitionLogs) {
+        for (TaskDefinitionLog taskDefinitionLog : taskDefinitionLogs) {
+            if (!TaskType.DEPENDENT.getDesc().equals(taskDefinitionLog.getTaskType())) {
+                continue;
+            }
+
+            ObjectNode taskParams = JSONUtils.parseObject(taskDefinitionLog.getTaskParams());
+            ObjectNode dependence = (ObjectNode) taskParams.get("dependence");
+            ArrayNode dependTaskList = JSONUtils.parseArray(JSONUtils.toJsonString(dependence.get("dependTaskList")));
+
+            for (int i = 0; i < dependTaskList.size(); i++) {
+                ObjectNode dependTask = (ObjectNode) dependTaskList.path(i);
+                ArrayNode dependItemList = JSONUtils.parseArray(JSONUtils.toJsonString(dependTask.get("dependItemList")));
+                for (int j = 0; j < dependItemList.size(); j++) {
+                    ObjectNode dependItem = (ObjectNode) dependItemList.path(j);
+
+                    dependItem.put("projectCode", dependItem.get("projectId").asInt());
+                    dependItem.put("definitionCode", dependItem.get("definitionId").asInt());
+                    dependItem.set("depTaskCode", dependItem.get("depTasks"));
+
+                    dependItem.remove("projectId");
+                    dependItem.remove("definitionId");
+                    dependItem.remove("depTasks");
+                    dependItemList.set(j, dependItem);
+                }
+
+                dependTask.set("dependItemList", dependItemList);
+                dependTaskList.set(i, dependTask);
+            }
+            dependence.set("dependTaskList", dependTaskList);
+            taskDefinitionLog.setTaskParams(JSONUtils.toJsonString(taskParams));
+        }
 
     }
 }
