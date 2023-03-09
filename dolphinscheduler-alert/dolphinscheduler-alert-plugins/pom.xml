@@ -33,6 +33,8 @@
         <module>dolphinscheduler-alert-http</module>
         <module>dolphinscheduler-alert-feishu</module>
         <module>dolphinscheduler-alert-slack</module>
+        <module>dolphinscheduler-alert-walmart-wecom</module>
+        <module>dolphinscheduler-alert-walmart-oncall</module>
     </modules>
 
     <dependencies>
