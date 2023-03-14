@@ -702,7 +702,27 @@ public abstract class UpgradeDao {
     }
 
     public void updateWalmartDDL() {
-
+        Resource sqlFilePath = new ClassPathResource("sql/walmart/walmart_schema/dolphinscheduler_ddl.sql");
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        try {
+            conn = dataSource.getConnection();
+            String dbName = conn.getCatalog();
+            logger.info(dbName);
+            conn.setAutoCommit(true);
+            // Execute the dolphinscheduler ddl.sql for the upgrade
+            ScriptRunner scriptRunner = new ScriptRunner(conn, true, true);
+            Reader sqlReader = new InputStreamReader(sqlFilePath.getInputStream());
+            scriptRunner.runScript(sqlReader);
+        } catch (FileNotFoundException e) {
+            logger.error(e.getMessage(), e);
+            throw new RuntimeException("sql file not found ", e);
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+            throw new RuntimeException(e.getMessage(), e);
+        } finally {
+            ConnectionUtils.releaseResource(pstmt, conn);
+        }
     }
 
     public void convertWalmartDependence(List<TaskDefinitionLog> taskDefinitionLogs) {
