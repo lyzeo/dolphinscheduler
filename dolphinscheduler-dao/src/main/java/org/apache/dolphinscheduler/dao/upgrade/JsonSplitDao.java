@@ -17,6 +17,7 @@
 
 package org.apache.dolphinscheduler.dao.upgrade;
 
+import org.apache.dolphinscheduler.common.enums.*;
 import org.apache.dolphinscheduler.common.utils.ConnectionUtils;
 import org.apache.dolphinscheduler.dao.entity.ProcessDefinitionLog;
 import org.apache.dolphinscheduler.dao.entity.ProcessTaskRelationLog;
@@ -26,6 +27,7 @@ import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,7 +121,7 @@ public class JsonSplitDao {
                 insert.setInt(5, processTaskRelationLog.getPreTaskVersion());
                 insert.setLong(6, processTaskRelationLog.getPostTaskCode());
                 insert.setInt(7, processTaskRelationLog.getPostTaskVersion());
-                insert.setInt(8, processTaskRelationLog.getConditionType().getCode());
+                insert.setInt(8, Optional.ofNullable(processTaskRelationLog.getConditionType()).map(ConditionType::getCode).orElse(2));
                 insert.setString(9, processTaskRelationLog.getConditionParams());
                 insert.setDate(10, new Date(processTaskRelationLog.getCreateTime().getTime()));
                 insert.setDate(11, new Date(processTaskRelationLog.getUpdateTime().getTime()));
@@ -178,6 +180,11 @@ public class JsonSplitDao {
             PreparedStatement insertLog = conn.prepareStatement(insertLogSql);
             int i = 0;
             for (TaskDefinitionLog taskDefinitionLog : taskDefinitionLogs) {
+                int flag = Optional.ofNullable(taskDefinitionLog.getFlag()).map(Flag::getCode).orElse(1);
+                int priority = Optional.ofNullable(taskDefinitionLog.getTaskPriority()).map(Priority::getCode).orElse(2);
+                int timeoutFlag = Optional.ofNullable(taskDefinitionLog.getTimeoutFlag()).map(TimeoutFlag::getCode).orElse(0);
+                int timeoutNotifyStrategy = Optional.ofNullable(taskDefinitionLog.getTimeoutNotifyStrategy()).map(TaskTimeoutStrategy::getCode).orElse(0);
+
                 insert.setLong(1, taskDefinitionLog.getCode());
                 insert.setString(2, taskDefinitionLog.getName());
                 insert.setInt(3, taskDefinitionLog.getVersion());
@@ -186,14 +193,14 @@ public class JsonSplitDao {
                 insert.setInt(6, taskDefinitionLog.getUserId());
                 insert.setString(7, taskDefinitionLog.getTaskType());
                 insert.setString(8, taskDefinitionLog.getTaskParams());
-                insert.setInt(9, taskDefinitionLog.getFlag().getCode());
-                insert.setInt(10, taskDefinitionLog.getTaskPriority().getCode());
+                insert.setInt(9, flag);
+                insert.setInt(10, priority);
                 insert.setString(11, taskDefinitionLog.getWorkerGroup());
                 insert.setLong(12, taskDefinitionLog.getEnvironmentCode());
                 insert.setInt(13, taskDefinitionLog.getFailRetryTimes());
                 insert.setInt(14, taskDefinitionLog.getFailRetryInterval());
-                insert.setInt(15, taskDefinitionLog.getTimeoutFlag().getCode());
-                insert.setInt(16, taskDefinitionLog.getTimeoutNotifyStrategy() == null ? 0 : taskDefinitionLog.getTimeoutNotifyStrategy().getCode());
+                insert.setInt(15, timeoutFlag);
+                insert.setInt(16, timeoutNotifyStrategy);
                 insert.setInt(17, taskDefinitionLog.getTimeout());
                 insert.setInt(18, taskDefinitionLog.getDelayTime());
                 insert.setString(19, taskDefinitionLog.getResourceIds());
@@ -209,14 +216,14 @@ public class JsonSplitDao {
                 insertLog.setInt(6, taskDefinitionLog.getUserId());
                 insertLog.setString(7, taskDefinitionLog.getTaskType());
                 insertLog.setString(8, taskDefinitionLog.getTaskParams());
-                insertLog.setInt(9, taskDefinitionLog.getFlag().getCode());
-                insertLog.setInt(10, taskDefinitionLog.getTaskPriority().getCode());
+                insertLog.setInt(9,  flag);
+                insertLog.setInt(10, priority);
                 insertLog.setString(11, taskDefinitionLog.getWorkerGroup());
                 insertLog.setLong(12, taskDefinitionLog.getEnvironmentCode());
                 insertLog.setInt(13, taskDefinitionLog.getFailRetryTimes());
                 insertLog.setInt(14, taskDefinitionLog.getFailRetryInterval());
-                insertLog.setInt(15, taskDefinitionLog.getTimeoutFlag().getCode());
-                insertLog.setInt(16, taskDefinitionLog.getTimeoutNotifyStrategy() == null ? 0 : taskDefinitionLog.getTimeoutNotifyStrategy().getCode());
+                insertLog.setInt(15, timeoutFlag);
+                insertLog.setInt(16, timeoutNotifyStrategy);
                 insertLog.setInt(17, taskDefinitionLog.getTimeout());
                 insertLog.setInt(18, taskDefinitionLog.getDelayTime());
                 insertLog.setString(19, taskDefinitionLog.getResourceIds());
