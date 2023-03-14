@@ -60,7 +60,11 @@ public class WalmartUpgradeDao {
             }
 
             String weChatAddresses = item.get(WECHAT_ADDRESS);
-            if (StringUtils.isNotBlank(weChatAddresses) && !"[]".equals(weChatAddresses)) {
+            if (StringUtils.isNotBlank(weChatAddresses)
+                    && !"[]".equals(weChatAddresses)
+                    && !"null".equals(weChatAddresses)
+                    && !"[null]".equals(weChatAddresses)
+                    && !"[\"null\"]".equals(weChatAddresses)) {
                 instanceIds.add(insertWeComPluginInstance(processId, weChatAddresses));
             }
 
@@ -72,6 +76,7 @@ public class WalmartUpgradeDao {
              if (CollectionUtils.isNotEmpty(instanceIds)) {
                  Integer alertGroupId = updateAlertGroup(processId, instanceIds);
                  updateProcessDefinition(conn, processId, alertGroupId);
+                 updateScheduler(processId, conn, alertGroupId);
              }
         }
         log.info("walmart alert update end!!!");
@@ -169,6 +174,38 @@ public class WalmartUpgradeDao {
         } catch (SQLException e) {
             log.error(e.getMessage(), e);
             throw new RuntimeException("sql: " + sql, e);
+        }
+    }
+
+    public void updateScheduler(String processId, Connection conn, Integer alertGroupId) {
+        String querySQL = "select id  from t_ds_scheduler where process_definition_code = ?";
+        String updateSQL = "update t_ds_scheduler set warning_group_id = ? where id = ?";
+
+        PreparedStatement queryStmt = null;
+        PreparedStatement updateStmt = null;
+        ResultSet rs = null;
+
+        try {
+            queryStmt = conn.prepareStatement(querySQL);
+            updateStmt = conn.prepareStatement(updateSQL);
+
+            queryStmt.setString(1, processId);
+            log.info("{}, {}", querySQL, processId);
+            rs = queryStmt.executeQuery();
+            while (rs.next()) {
+                String id = rs.getString(1);
+                if (StringUtils.isNotBlank(id)) {
+                    updateStmt.setInt(1, alertGroupId);
+                    updateStmt.setInt(2, Integer.parseInt(id));
+                    log.info("sql: {}, {}, {}", updateSQL,  processId, alertGroupId);
+                    updateStmt.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            log.error(e.getMessage(), e);
+            throw new RuntimeException("sql execute failed,", e);
+        } finally {
+            ConnectionUtils.releaseResource(queryStmt, rs, updateStmt);
         }
     }
 
