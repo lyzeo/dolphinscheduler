@@ -507,7 +507,7 @@ public abstract class UpgradeDao {
                 String name = task.get("name").asText();
                 taskDefinitionLog.setName(name);
                 taskDefinitionLog.setWorkerGroup(task.get("workerGroup") == null ? "default" : task.get("workerGroup").asText());
-                long taskCode = task.get("preTasks").asLong();
+                long taskCode = task.get("id").asLong();
                 taskDefinitionLog.setCode(taskCode);
                 taskDefinitionLog.setVersion(Constants.VERSION_FIRST);
                 taskDefinitionLog.setProjectCode(processDefinition.getProjectCode());
