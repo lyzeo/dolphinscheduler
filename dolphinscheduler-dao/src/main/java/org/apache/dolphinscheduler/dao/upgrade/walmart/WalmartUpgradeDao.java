@@ -180,8 +180,8 @@ public class WalmartUpgradeDao {
     }
 
     public void updateScheduler(String processId, Connection conn, Integer alertGroupId) {
-        String querySQL = "select id  from t_ds_scheduler where process_definition_code = ?";
-        String updateSQL = "update t_ds_scheduler set warning_group_id = ? where id = ?";
+        String querySQL = "select id  from t_ds_schedules where process_definition_code = ?";
+        String updateSQL = "update t_ds_schedules set warning_group_id = ? where id = ?";
 
         PreparedStatement queryStmt = null;
         PreparedStatement updateStmt = null;
