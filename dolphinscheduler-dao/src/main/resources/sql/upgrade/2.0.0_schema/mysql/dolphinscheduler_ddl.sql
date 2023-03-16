@@ -384,9 +384,11 @@ alter table t_ds_process_instance drop connects;
 alter table t_ds_process_instance drop dependence_schedule_times;
 
 -- t_ds_task_instance   note: Data migration is not supported
-alter table t_ds_task_instance change process_definition_id task_code bigint(20) NOT NULL COMMENT 'task definition code';
+--alter table t_ds_task_instance change process_definition_id task_code bigint(20) NOT NULL COMMENT 'task definition code';
+alter table t_ds_task_instance add task_code bigint(20) NOT NULL COMMENT 'task definition code';
 alter table t_ds_task_instance add task_definition_version int(11) DEFAULT '0' COMMENT 'task definition version' AFTER task_code;
-alter table t_ds_task_instance add task_params text COMMENT 'job custom parameters' AFTER app_link;
+--alter table t_ds_task_instance add task_params text COMMENT 'job custom parameters' AFTER app_link;
+alter table t_ds_task_instance change task_json task_params text COMMENT 'job custom parameters' AFTER app_link;
 alter table t_ds_task_instance add environment_code bigint(20) DEFAULT '-1' COMMENT 'environment code' AFTER worker_group;
 alter table t_ds_task_instance add environment_config text COMMENT 'this config contains many environment variables config' AFTER environment_code;
 alter table t_ds_task_instance add first_submit_time datetime DEFAULT NULL COMMENT 'task first submit time' AFTER executor_id;
@@ -394,7 +396,7 @@ alter table t_ds_task_instance add delay_time int(4) DEFAULT '0' COMMENT 'task d
 alter table t_ds_task_instance add var_pool longtext COMMENT 'var_pool' AFTER delay_time;
 alter table t_ds_task_instance add dry_run tinyint(4) DEFAULT '0' COMMENT 'dry run flag：0 normal, 1 dry run' AFTER var_pool;
 --alter table t_ds_task_instance drop KEY `task_instance_index`;
-alter table t_ds_task_instance drop task_json;
+--alter table t_ds_task_instance drop task_json;
 
 -- t_ds_schedules
 alter table t_ds_schedules change process_definition_id process_definition_code bigint(20) NOT NULL COMMENT 'process definition code';

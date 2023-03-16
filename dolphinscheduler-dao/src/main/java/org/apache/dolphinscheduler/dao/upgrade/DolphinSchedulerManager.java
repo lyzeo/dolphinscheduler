@@ -120,6 +120,7 @@ public class DolphinSchedulerManager {
                 upgradeDao.upgradeDolphinSchedulerResourceFileSize();
                 upgradeDao.updateWalmartAlert();
                 upgradeDao.updateWalmartDDL();
+                upgradeDao.updateWalmartProcessInstanceVersion();
             }
         }
 

@@ -7,6 +7,8 @@ import org.apache.dolphinscheduler.common.utils.ConnectionUtils;
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.dao.entity.AlertGroup;
 import org.apache.dolphinscheduler.dao.entity.AlertPluginInstance;
+import org.apache.dolphinscheduler.dao.entity.ProcessDefinition;
+import org.apache.dolphinscheduler.dao.entity.ProcessInstance;
 import org.apache.dolphinscheduler.dao.mapper.AlertGroupMapper;
 import org.apache.dolphinscheduler.dao.mapper.AlertPluginInstanceMapper;
 import org.slf4j.Logger;
@@ -207,6 +209,65 @@ public class WalmartUpgradeDao {
         } finally {
             ConnectionUtils.releaseResource(queryStmt, rs, updateStmt);
         }
+    }
+
+    public void updateProcessInstanceVersion(Connection conn)  {
+        List<ProcessInstance>  processInstances = getAllProcessInstance(conn);
+        String sql = "update t_ds_process_instance set process_definition_version = ? where id = ?";
+
+        for (ProcessInstance instance : processInstances) {
+            ProcessDefinition definition = getProcessDefinitionByCode(conn, instance.getProcessDefinitionCode());
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)){
+                pstmt.setInt(1, definition.getVersion());
+                pstmt.setLong(2, instance.getId());
+                pstmt.executeUpdate();
+            } catch (SQLException e) {
+                log.error(e.getMessage(), e);
+                throw new RuntimeException(sql, e);
+            }
+        }
+    }
+
+    private ProcessDefinition getProcessDefinitionByCode(Connection conn, Long processDefinitionCode) {
+        String sql = "select id, name, version from t_ds_process_definition where code = ?";
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        ProcessDefinition definition = new ProcessDefinition();
+        try {
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setLong(1, processDefinitionCode);
+            rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                definition.setId(rs.getInt(1));
+                definition.setName(rs.getString(2));
+                definition.setVersion(rs.getInt(3));
+            }
+        } catch (SQLException e) {
+            log.error(e.getMessage(), e);
+            throw new RuntimeException(sql, e);
+        } finally {
+            ConnectionUtils.releaseResource(pstmt, rs);
+        }
+        return definition;
+    }
+
+    private List<ProcessInstance> getAllProcessInstance(Connection conn) {
+        String sql = "select id, process_definition_code from t_ds_process_instance";
+        List<ProcessInstance> result = new ArrayList<>();
+        try (PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                ProcessInstance instance = new ProcessInstance();
+                instance.setId(rs.getInt(1));
+                instance.setProcessDefinitionCode(rs.getLong(2));
+                result.add(instance);
+            }
+        } catch (SQLException e) {
+            log.error(e.getMessage(), e);
+            throw new RuntimeException(sql, e);
+        }
+        return result;
     }
 
 }
