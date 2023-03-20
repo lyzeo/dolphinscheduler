@@ -169,9 +169,18 @@ public class JsonSplitDao {
      * @param taskDefinitionLogs taskDefinitionLogs
      */
     public void executeJsonSplitTaskDefinition(Connection conn, List<TaskDefinitionLog> taskDefinitionLogs) {
-        String insertSql = "insert into t_ds_task_definition (code,name,version,description,project_code,user_id,task_type,task_params,flag,task_priority,"
-            + "worker_group,environment_code,fail_retry_times,fail_retry_interval,timeout_flag,timeout_notify_strategy,timeout,delay_time,resource_ids,"
-            + "create_time,update_time) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        String insertSql = "insert into t_ds_task_definition (" +
+                "code,name,version,description,project_code," +
+                "user_id,task_type,task_params,flag,task_priority," +
+                "worker_group,environment_code,fail_retry_times,fail_retry_interval,timeout_flag," +
+                "timeout_notify_strategy,timeout,delay_time,resource_ids,create_time," +
+                "update_time,process_definition_id) " +
+                "values (" +
+                "?,?,?,?,?," +
+                "?,?,?,?,?," +
+                "?,?,?,?,?," +
+                "?,?,?,?,?," +
+                "?,?)";
         String insertLogSql = "insert into t_ds_task_definition_log (code,name,version,description,project_code,user_id,task_type,task_params,flag,task_priority,"
             + "worker_group,environment_code,fail_retry_times,fail_retry_interval,timeout_flag,timeout_notify_strategy,timeout,delay_time,resource_ids,operator,"
             + "operate_time,create_time,update_time) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
@@ -206,6 +215,7 @@ public class JsonSplitDao {
                 insert.setString(19, taskDefinitionLog.getResourceIds());
                 insert.setDate(20, new Date(taskDefinitionLog.getCreateTime().getTime()));
                 insert.setDate(21, new Date(taskDefinitionLog.getUpdateTime().getTime()));
+                insert.setLong(22, taskDefinitionLog.getProcessDefinitionId());
                 insert.addBatch();
 
                 insertLog.setLong(1, taskDefinitionLog.getCode());

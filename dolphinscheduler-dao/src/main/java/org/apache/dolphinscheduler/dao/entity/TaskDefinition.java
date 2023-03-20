@@ -80,6 +80,11 @@ public class TaskDefinition {
     private long projectCode;
 
     /**
+     * process definition id
+     */
+    private long processDefinitionId;
+
+    /**
      * task user id
      */
     private int userId;
@@ -340,6 +345,14 @@ public class TaskDefinition {
 
     public void setProjectCode(long projectCode) {
         this.projectCode = projectCode;
+    }
+
+    public long getProcessDefinitionId() {
+        return processDefinitionId;
+    }
+
+    public void setProcessDefinitionId(long processDefinitionId) {
+        this.processDefinitionId = processDefinitionId;
     }
 
     public String getTaskType() {

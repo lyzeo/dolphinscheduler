@@ -260,6 +260,7 @@ CREATE TABLE `t_ds_task_definition` (
   `version` int(11) DEFAULT '0' COMMENT 'task definition version',
   `description` text COMMENT 'description',
   `project_code` bigint(20) NOT NULL COMMENT 'project code',
+  `process_definition_id` bigint(20) NOT NULL COMMENT 'process definition id',
   `user_id` int(11) DEFAULT NULL COMMENT 'task definition creator id',
   `task_type` varchar(50) NOT NULL COMMENT 'task type',
   `task_params` longtext COMMENT 'job custom parameters',

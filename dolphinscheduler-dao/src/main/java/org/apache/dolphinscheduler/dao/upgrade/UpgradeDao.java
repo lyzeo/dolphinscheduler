@@ -28,6 +28,7 @@ import org.apache.dolphinscheduler.common.Constants;
 import org.apache.dolphinscheduler.common.enums.*;
 import org.apache.dolphinscheduler.common.process.ResourceInfo;
 import org.apache.dolphinscheduler.common.task.TaskTimeoutParameter;
+import org.apache.dolphinscheduler.common.utils.CodeGenerateUtils;
 import org.apache.dolphinscheduler.common.utils.ConnectionUtils;
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.common.utils.ScriptRunner;
@@ -507,10 +508,11 @@ public abstract class UpgradeDao {
                 String name = task.get("name").asText();
                 taskDefinitionLog.setName(name);
                 taskDefinitionLog.setWorkerGroup(task.get("workerGroup") == null ? "default" : task.get("workerGroup").asText());
-                long taskCode = task.get("id").asLong();
+                long taskCode = CodeGenerateUtils.getInstance().genCode();
                 taskDefinitionLog.setCode(taskCode);
                 taskDefinitionLog.setVersion(Constants.VERSION_FIRST);
                 taskDefinitionLog.setProjectCode(processDefinition.getProjectCode());
+                taskDefinitionLog.setProcessDefinitionId(processDefinition.getId());
                 taskDefinitionLog.setUserId(processDefinition.getUserId());
                 taskDefinitionLog.setEnvironmentCode(-1);
                 taskDefinitionLog.setDelayTime(0);
@@ -758,6 +760,14 @@ public abstract class UpgradeDao {
             logger.error(e.getMessage(), e);
             throw new RuntimeException(e);
         }
+    }
 
+    public void updateWalmartTaskInstanceCode() {
+        try {
+            walmartUpgradeDao.updateTaskInstanceCode(dataSource.getConnection());
+        } catch (SQLException e) {
+            logger.error(e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
     }
 }

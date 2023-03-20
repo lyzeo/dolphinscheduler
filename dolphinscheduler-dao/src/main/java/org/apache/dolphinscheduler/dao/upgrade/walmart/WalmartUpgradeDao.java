@@ -20,10 +20,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Component
 public class WalmartUpgradeDao {
@@ -268,6 +265,40 @@ public class WalmartUpgradeDao {
             throw new RuntimeException(sql, e);
         }
         return result;
+    }
+
+    public void updateTaskInstanceCode(Connection conn) {
+        log.info("update task instance code start");
+        String updateSql = "update t_ds_task_instance set task_code = ? where name = ? and process_definition_id = ?";
+        String querySql = "select code, name, process_definition_id from t_ds_task_definition";
+
+        PreparedStatement updateStmt = null;
+        PreparedStatement queryStmt = null;
+        ResultSet rs = null;
+        try {
+            queryStmt = conn.prepareStatement(querySql);
+            updateStmt = conn.prepareStatement(updateSql);
+            log.info("sql : {}", querySql);
+            rs = queryStmt.executeQuery();
+            while (rs.next()) {
+                long code = rs.getLong(1);
+                String name  = rs.getString(2);
+                int procesDefinitionId = rs.getInt(3);
+                if (StringUtils.isNotBlank(name)) {
+                    updateStmt.setLong(1, code);
+                    updateStmt.setString(2, name);
+                    updateStmt.setInt(3, procesDefinitionId);
+                    log.info("sql: {}, {}, {}, {}", updateSql, code, name, procesDefinitionId);
+                    updateStmt.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            log.error(e.getMessage(), e);
+            throw new RuntimeException("sql execute failed, ", e);
+        } finally {
+            log.info("update task instance code end");
+            ConnectionUtils.releaseResource(updateStmt, queryStmt, rs);
+        }
     }
 
 }
