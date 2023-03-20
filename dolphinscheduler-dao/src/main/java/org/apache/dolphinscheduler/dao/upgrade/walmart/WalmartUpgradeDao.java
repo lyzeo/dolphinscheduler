@@ -269,8 +269,8 @@ public class WalmartUpgradeDao {
 
     public void updateTaskInstanceCode(Connection conn) {
         log.info("update task instance code start");
-        String updateSql = "update t_ds_task_instance set task_code = ? where name = ? and process_definition_id = ?";
-        String querySql = "select code, name, process_definition_id from t_ds_task_definition";
+        String updateSql = "update t_ds_task_instance set task_code = ?, task_definition_version = ? where name = ? and process_definition_id = ?";
+        String querySql = "select code, name, process_definition_id, version from t_ds_task_definition";
 
         PreparedStatement updateStmt = null;
         PreparedStatement queryStmt = null;
@@ -283,12 +283,15 @@ public class WalmartUpgradeDao {
             while (rs.next()) {
                 long code = rs.getLong(1);
                 String name  = rs.getString(2);
-                int procesDefinitionId = rs.getInt(3);
+                long procesDefinitionId = rs.getInt(3);
+                int version = rs.getInt(4);
+
                 if (StringUtils.isNotBlank(name)) {
                     updateStmt.setLong(1, code);
-                    updateStmt.setString(2, name);
-                    updateStmt.setInt(3, procesDefinitionId);
-                    log.info("sql: {}, {}, {}, {}", updateSql, code, name, procesDefinitionId);
+                    updateStmt.setInt(2, version);
+                    updateStmt.setString(3, name);
+                    updateStmt.setLong(4, procesDefinitionId);
+                    log.info("sql: {}, {}, {}, {}, {}", updateSql, code, version, name, procesDefinitionId);
                     updateStmt.executeUpdate();
                 }
             }
