@@ -23,6 +23,7 @@ import org.apache.dolphinscheduler.spi.enums.ResUploadType;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.security.UserGroupInformation;
 
 import java.io.IOException;
@@ -39,6 +40,8 @@ public class CommonUtils {
     private static final Logger logger = LoggerFactory.getLogger(CommonUtils.class);
 
     private static final Base64 BASE64 = new Base64();
+
+    private static final String HADOOP_CONF_DIR = System.getenv("HADOOP_CONF_DIR");
 
     private CommonUtils() {
         throw new UnsupportedOperationException("Construct CommonUtils");
@@ -126,8 +129,12 @@ public class CommonUtils {
      */
     public static boolean loadKerberosConf(String javaSecurityKrb5Conf, String loginUserKeytabUsername, String loginUserKeytabPath, Configuration configuration) throws IOException {
         if (CommonUtils.getKerberosStartupState()) {
+            System.setProperty(Constants.JAVA_SECURITY_KRB5_KDC, PropertyUtils.getString(Constants.JAVA_SECURITY_KRB5_KDC));
+            System.setProperty(Constants.JAVA_SECURITY_KRB5_REALM, PropertyUtils.getString(Constants.JAVA_SECURITY_KRB5_REALM));
             System.setProperty(Constants.JAVA_SECURITY_KRB5_CONF, StringUtils.defaultIfBlank(javaSecurityKrb5Conf, PropertyUtils.getString(Constants.JAVA_SECURITY_KRB5_CONF_PATH)));
             configuration.set(Constants.HADOOP_SECURITY_AUTHENTICATION, Constants.KERBEROS);
+            configuration.addResource(new Path(HADOOP_CONF_DIR + "/core-site.xml"));
+            configuration.addResource(new Path(HADOOP_CONF_DIR + "/hdfs-site.xml"));
             UserGroupInformation.setConfiguration(configuration);
             UserGroupInformation.loginUserFromKeytab(StringUtils.defaultIfBlank(loginUserKeytabUsername, PropertyUtils.getString(Constants.LOGIN_USER_KEY_TAB_USERNAME)),
                     StringUtils.defaultIfBlank(loginUserKeytabPath, PropertyUtils.getString(Constants.LOGIN_USER_KEY_TAB_PATH)));

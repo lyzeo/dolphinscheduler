@@ -814,6 +814,16 @@ public final class Constants {
     public static final String JAVA_SECURITY_KRB5_CONF_PATH = "java.security.krb5.conf.path";
 
     /**
+     * java.security.krb5.kdc
+     */
+    public static final String JAVA_SECURITY_KRB5_KDC = "java.security.krb5.kdc";
+
+    /**
+     * java.security.krb5.realm
+     */
+    public static final String JAVA_SECURITY_KRB5_REALM = "java.security.krb5.realm";
+
+    /**
      * hadoop.security.authentication
      */
     public static final String HADOOP_SECURITY_AUTHENTICATION = "hadoop.security.authentication";
