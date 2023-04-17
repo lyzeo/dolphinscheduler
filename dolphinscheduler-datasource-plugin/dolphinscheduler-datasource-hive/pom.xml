@@ -109,6 +109,11 @@
                 </exclusion>
 
                 <exclusion>
+                    <groupId>org.eclipse.jetty</groupId>
+                    <artifactId>jetty-runner</artifactId>
+                </exclusion>
+
+                <exclusion>
                     <groupId>org.apache.ant</groupId>
                     <artifactId>ant</artifactId>
                 </exclusion>

@@ -47,6 +47,7 @@ public class HiveDatasourceProcessor extends AbstractDatasourceProcessor {
         hiveDataSourceParamDTO.setDatabase(hiveConnectionParam.getDatabase());
         hiveDataSourceParamDTO.setUserName(hiveConnectionParam.getUser());
         hiveDataSourceParamDTO.setOther(parseOther(hiveConnectionParam.getOther()));
+        hiveDataSourceParamDTO.setPrincipal(hiveConnectionParam.getPrincipal());
         hiveDataSourceParamDTO.setLoginUserKeytabUsername(hiveConnectionParam.getLoginUserKeytabUsername());
         hiveDataSourceParamDTO.setLoginUserKeytabPath(hiveConnectionParam.getLoginUserKeytabPath());
         hiveDataSourceParamDTO.setJavaSecurityKrb5Conf(hiveConnectionParam.getJavaSecurityKrb5Conf());
@@ -73,7 +74,7 @@ public class HiveDatasourceProcessor extends AbstractDatasourceProcessor {
             address.append(String.format("%s:%s,", zkHost, hiveParam.getPort()));
         }
         address.deleteCharAt(address.length() - 1);
-        String jdbcUrl = address.toString() + "/" + hiveParam.getDatabase();
+        String jdbcUrl = address + "/" + hiveParam.getDatabase();
 
         HiveConnectionParam hiveConnectionParam = new HiveConnectionParam();
         hiveConnectionParam.setDatabase(hiveParam.getDatabase());
@@ -85,6 +86,8 @@ public class HiveDatasourceProcessor extends AbstractDatasourceProcessor {
         hiveConnectionParam.setValidationQuery(getValidationQuery());
 
         if (CommonUtils.getKerberosStartupState()) {
+            jdbcUrl +=  ";principal=" + hiveParam.getPrincipal();
+            hiveConnectionParam.setJdbcUrl(jdbcUrl);
             hiveConnectionParam.setPrincipal(hiveParam.getPrincipal());
             hiveConnectionParam.setJavaSecurityKrb5Conf(hiveParam.getJavaSecurityKrb5Conf());
             hiveConnectionParam.setLoginUserKeytabPath(hiveParam.getLoginUserKeytabPath());
