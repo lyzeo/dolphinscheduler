@@ -513,10 +513,11 @@
         return new Promise((resolve, reject) => {
           this.store.dispatch('datasource/getKerberosStartupState').then(res => {
             this.isShowPrincipal = res
+            console.log('Data structure parsing succeeded!' + this.isShowPrincipal)
             if ((value === 'HIVE' || value === 'SPARK') && this.isShowPrincipal === true) {
               // TODO: follow-up support for multiple kerberos
               // this.showPrincipal = false
-              this.showPrincipal = true
+              this.showPrincipal = false
             } else {
               this.showPrincipal = true
             }
