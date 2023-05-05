@@ -17,9 +17,11 @@
 
 package org.apache.dolphinscheduler.plugin.task.http;
 
-import static org.apache.dolphinscheduler.plugin.task.http.HttpTaskConstants.APPLICATION_JSON;
-
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.dolphinscheduler.plugin.task.api.AbstractTaskExecutor;
+import org.apache.dolphinscheduler.plugin.task.http.plugins.AuthenticationApi;
+import org.apache.dolphinscheduler.plugin.task.http.plugins.AuthenticationFactory;
+import org.apache.dolphinscheduler.plugin.task.http.plugins.AuthenticationType;
 import org.apache.dolphinscheduler.plugin.task.util.MapUtils;
 import org.apache.dolphinscheduler.spi.task.AbstractParameters;
 import org.apache.dolphinscheduler.spi.task.Property;
@@ -29,19 +31,10 @@ import org.apache.dolphinscheduler.spi.task.request.TaskRequest;
 import org.apache.dolphinscheduler.spi.utils.DateUtils;
 import org.apache.dolphinscheduler.spi.utils.JSONUtils;
 import org.apache.dolphinscheduler.spi.utils.StringUtils;
-
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.io.Charsets;
 import org.apache.http.HttpEntity;
 import org.apache.http.ParseException;
-import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
@@ -50,8 +43,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public class HttpTask extends AbstractTaskExecutor {
 
@@ -67,6 +58,10 @@ public class HttpTask extends AbstractTaskExecutor {
      * taskExecutionContext
      */
     private TaskRequest taskExecutionContext;
+
+    protected Map<String, Property> paramsMap;
+
+    protected List<HttpProperty> httpPropertyList;
 
     /**
      * constructor
@@ -86,6 +81,8 @@ public class HttpTask extends AbstractTaskExecutor {
         if (!httpParameters.checkParameters()) {
             throw new RuntimeException("http task params is not valid");
         }
+        setParamMap();
+        setHttpPropertyList();
     }
 
     @Override
@@ -96,8 +93,10 @@ public class HttpTask extends AbstractTaskExecutor {
         String statusCode = null;
         String body = null;
 
-        try (CloseableHttpClient client = createHttpClient();
-             CloseableHttpResponse response = sendRequest(client)) {
+        AuthenticationApi api = AuthenticationFactory.getInstance(getAuthenticationType());
+        api.init(createRequestBuilder(), taskExecutionContext, httpParameters, paramsMap, httpPropertyList);
+
+        try (CloseableHttpResponse response = api.sendRequest()) {
             statusCode = String.valueOf(getStatusCode(response));
             body = getResponseBody(response);
             exitStatusCode = validResponse(body, statusCode);
@@ -112,41 +111,6 @@ public class HttpTask extends AbstractTaskExecutor {
             throw e;
         }
 
-    }
-
-    /**
-     * send request
-     *
-     * @param client client
-     * @return CloseableHttpResponse
-     * @throws IOException io exception
-     */
-    protected CloseableHttpResponse sendRequest(CloseableHttpClient client) throws IOException {
-        RequestBuilder builder = createRequestBuilder();
-
-        // replace placeholder,and combine local and global parameters
-        Map<String, Property> paramsMap = ParamUtils.convert(taskExecutionContext,getParameters());
-        if (MapUtils.isEmpty(paramsMap)) {
-            paramsMap = new HashMap<>();
-        }
-        if (MapUtils.isNotEmpty(taskExecutionContext.getParamsMap())) {
-            paramsMap.putAll(taskExecutionContext.getParamsMap());
-        }
-
-        List<HttpProperty> httpPropertyList = new ArrayList<>();
-        if (CollectionUtils.isNotEmpty(httpParameters.getHttpParams())) {
-            for (HttpProperty httpProperty : httpParameters.getHttpParams()) {
-                String jsonObject = JSONUtils.toJsonString(httpProperty);
-                String params = ParameterUtils.convertParameterPlaceholders(jsonObject, ParamUtils.convert(paramsMap));
-                logger.info("http request params：{}", params);
-                httpPropertyList.add(JSONUtils.parseObject(params, HttpProperty.class));
-            }
-        }
-        addRequestParams(builder, httpPropertyList);
-        String requestUrl = ParameterUtils.convertParameterPlaceholders(httpParameters.getUrl(), ParamUtils.convert(paramsMap));
-        HttpUriRequest request = builder.setUri(requestUrl).build();
-        setHeaders(request, httpPropertyList);
-        return client.execute(request);
     }
 
     /**
@@ -237,68 +201,6 @@ public class HttpTask extends AbstractTaskExecutor {
     }
 
     /**
-     * add request params
-     *
-     * @param builder buidler
-     * @param httpPropertyList http property list
-     */
-    protected void addRequestParams(RequestBuilder builder, List<HttpProperty> httpPropertyList) {
-        if (CollectionUtils.isNotEmpty(httpPropertyList)) {
-            ObjectNode jsonParam = JSONUtils.createObjectNode();
-            for (HttpProperty property : httpPropertyList) {
-                if (property.getHttpParametersType() != null) {
-                    if (property.getHttpParametersType().equals(HttpParametersType.PARAMETER)) {
-                        builder.addParameter(property.getProp(), property.getValue());
-                    } else if (property.getHttpParametersType().equals(HttpParametersType.BODY)) {
-                        jsonParam.put(property.getProp(), property.getValue());
-                    }
-                }
-            }
-            StringEntity postingString = new StringEntity(jsonParam.toString(), Charsets.UTF_8);
-            postingString.setContentEncoding(StandardCharsets.UTF_8.name());
-            postingString.setContentType(APPLICATION_JSON);
-            builder.setEntity(postingString);
-        }
-    }
-
-    /**
-     * set headers
-     *
-     * @param request request
-     * @param httpPropertyList http property list
-     */
-    protected void setHeaders(HttpUriRequest request, List<HttpProperty> httpPropertyList) {
-        if (CollectionUtils.isNotEmpty(httpPropertyList)) {
-            for (HttpProperty property : httpPropertyList) {
-                if (HttpParametersType.HEADERS.equals(property.getHttpParametersType())) {
-                    request.addHeader(property.getProp(), property.getValue());
-                }
-            }
-        }
-    }
-
-    /**
-     * create http client
-     *
-     * @return CloseableHttpClient
-     */
-    protected CloseableHttpClient createHttpClient() {
-        final RequestConfig requestConfig = requestConfig();
-        HttpClientBuilder httpClientBuilder;
-        httpClientBuilder = HttpClients.custom().setDefaultRequestConfig(requestConfig);
-        return httpClientBuilder.build();
-    }
-
-    /**
-     * request config
-     *
-     * @return RequestConfig
-     */
-    private RequestConfig requestConfig() {
-        return RequestConfig.custom().setSocketTimeout(httpParameters.getSocketTimeout()).setConnectTimeout(httpParameters.getConnectTimeout()).build();
-    }
-
-    /**
      * create request builder
      *
      * @return RequestBuilder
@@ -323,5 +225,38 @@ public class HttpTask extends AbstractTaskExecutor {
     @Override
     public AbstractParameters getParameters() {
         return this.httpParameters;
+    }
+
+    public AuthenticationType getAuthenticationType() {
+        String authType = "";
+        for (HttpProperty property : httpPropertyList) {
+            if (HttpParametersType.HEADERS.equals(property.getHttpParametersType()) && ("authType".equals(property.getProp()))) {
+                authType = property.getValue();
+            }
+        }
+        return AuthenticationType.getByCode(authType);
+    }
+
+    public void setParamMap() {
+        paramsMap = ParamUtils.convert(taskExecutionContext, this.httpParameters);
+        if (MapUtils.isEmpty(paramsMap)) {
+            paramsMap = new HashMap<>();
+        }
+        if (MapUtils.isNotEmpty(taskExecutionContext.getParamsMap())) {
+            paramsMap.putAll(taskExecutionContext.getParamsMap());
+        }
+    }
+
+    private void setHttpPropertyList() {
+        List<HttpProperty> result = new ArrayList<>();
+        if (CollectionUtils.isNotEmpty(httpParameters.getHttpParams())) {
+            for (HttpProperty httpProperty : httpParameters.getHttpParams()) {
+                String jsonObject = JSONUtils.toJsonString(httpProperty);
+                String params = ParameterUtils.convertParameterPlaceholders(jsonObject, ParamUtils.convert(paramsMap));
+                logger.info("http request params：{}", params);
+                result.add(JSONUtils.parseObject(params, HttpProperty.class));
+            }
+        }
+        this.httpPropertyList = result;
     }
 }
