@@ -82,6 +82,7 @@ public class TaskDefinition {
     /**
      * process definition id
      */
+    @TableField(exist = false)
     private long processDefinitionId;
 
     /**
