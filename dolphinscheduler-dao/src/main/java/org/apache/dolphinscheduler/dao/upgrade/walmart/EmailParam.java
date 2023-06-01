@@ -35,8 +35,8 @@ public class EmailParam {
         this.serverPort = "25";
         this.sender = "cnpipeline@wal-mart.com";
         this.enableSmtpAuth = "false";
-        this.user = null;
-        this.passwd = null;
+        this.user = "cnpipeline@wal-mart.com";
+        this.passwd = "";
         this.starttlsEnable = "false";
         this.sslEnable = "false";
         this.smtpSslTrust = "*";
