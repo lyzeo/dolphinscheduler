@@ -30,22 +30,15 @@ import static org.apache.dolphinscheduler.common.enums.Direct.IN;
 
 import org.apache.commons.collections4.MapUtils;
 import org.apache.dolphinscheduler.common.Constants;
-import org.apache.dolphinscheduler.common.enums.CommandType;
-import org.apache.dolphinscheduler.common.enums.DependResult;
-import org.apache.dolphinscheduler.common.enums.ExecutionStatus;
-import org.apache.dolphinscheduler.common.enums.FailureStrategy;
-import org.apache.dolphinscheduler.common.enums.Flag;
-import org.apache.dolphinscheduler.common.enums.Priority;
-import org.apache.dolphinscheduler.common.enums.StateEvent;
-import org.apache.dolphinscheduler.common.enums.StateEventType;
-import org.apache.dolphinscheduler.common.enums.TaskDependType;
-import org.apache.dolphinscheduler.common.enums.TaskTimeoutStrategy;
-import org.apache.dolphinscheduler.common.enums.TimeoutFlag;
+import org.apache.dolphinscheduler.common.enums.*;
 import org.apache.dolphinscheduler.common.graph.DAG;
 import org.apache.dolphinscheduler.common.model.TaskNode;
 import org.apache.dolphinscheduler.common.model.TaskNodeRelation;
 import org.apache.dolphinscheduler.common.process.ProcessDag;
 import org.apache.dolphinscheduler.common.process.Property;
+import org.apache.dolphinscheduler.common.task.python.PythonParameters;
+import org.apache.dolphinscheduler.common.task.shell.ShellParameters;
+import org.apache.dolphinscheduler.common.task.sql.SqlParameters;
 import org.apache.dolphinscheduler.common.thread.ThreadUtils;
 import org.apache.dolphinscheduler.common.utils.DateUtils;
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
@@ -856,6 +849,38 @@ public class WorkflowExecuteThread implements Runnable {
      */
     private TaskInstance createTaskInstance(ProcessInstance processInstance, TaskNode taskNode) {
         TaskInstance taskInstance = findTaskIfExists(taskNode.getCode(), taskNode.getVersion());
+        if ( processInstance.isComplementData() ) {
+            logger.info("start to handle complement data task parameter!");
+            TaskType taskType = TaskType.valueOf(taskNode.getType());
+            List<Property> properties = processService.getParamsForCompleteData(processInstance);
+
+            switch ( taskType ) {
+                case SHELL:
+                    ShellParameters shellParameters = JSONUtils.parseObject(taskNode.getParams(), ShellParameters.class);
+                    if (shellParameters != null ) {
+                        shellParameters.setLocalParams(properties);
+                        taskNode.setParams(JSONUtils.toJsonString(shellParameters));
+                    }
+                    break;
+                case PYTHON:
+                    PythonParameters pythonParameters = JSONUtils.parseObject(taskNode.getParams(), PythonParameters.class);
+                    if (pythonParameters != null ) {
+                        pythonParameters.setLocalParams(properties);
+                        taskNode.setParams(JSONUtils.toJsonString(pythonParameters));
+                    }
+                    break;
+                case SQL:
+                    SqlParameters sqlParameters = JSONUtils.parseObject(taskNode.getParams(), SqlParameters.class);
+                    if (sqlParameters != null ) {
+                        sqlParameters.setLocalParams(properties);
+                        taskNode.setParams(JSONUtils.toJsonString(sqlParameters));
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
         if (taskInstance == null) {
             taskInstance = new TaskInstance();
             taskInstance.setTaskCode(taskNode.getCode());

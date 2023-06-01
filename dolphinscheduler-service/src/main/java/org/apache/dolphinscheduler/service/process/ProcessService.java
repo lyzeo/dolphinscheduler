@@ -106,6 +106,7 @@ import org.apache.dolphinscheduler.dao.utils.DagHelper;
 import org.apache.dolphinscheduler.remote.utils.Host;
 import org.apache.dolphinscheduler.service.exceptions.ServiceException;
 import org.apache.dolphinscheduler.service.log.LogClientService;
+import org.apache.dolphinscheduler.service.process.parameter.application.ParameterApplicationService;
 import org.apache.dolphinscheduler.service.quartz.cron.CronUtils;
 import org.apache.dolphinscheduler.spi.enums.ResourceType;
 
@@ -208,6 +209,9 @@ public class ProcessService {
 
     @Autowired
     private EnvironmentMapper environmentMapper;
+
+    @Autowired
+    private ParameterApplicationService parameterApplicationService;
 
     /**
      * handle Command (construct ProcessInstance from Command) , wrapped in transaction
@@ -627,11 +631,13 @@ public class ProcessService {
 
         // reset global params while there are start parameters
         setGlobalParamIfCommanded(processDefinition, cmdParam);
+        Map<String, String> globalParamMap = parameterApplicationService.getAllParamMap(processDefinition, command);
+        List<Property> globalParamList = parameterApplicationService.getAllParamList(processDefinition, command);
 
         // curing global params
         processInstance.setGlobalParams(ParameterUtils.curingGlobalParams(
-                processDefinition.getGlobalParamMap(),
-                processDefinition.getGlobalParamList(),
+                globalParamMap,
+                globalParamList,
                 getCommandTypeIfComplement(processInstance, command),
                 processInstance.getScheduleTime()));
 
@@ -771,15 +777,17 @@ public class ProcessService {
             if (commandTypeIfComplement == CommandType.REPEAT_RUNNING) {
                 setGlobalParamIfCommanded(processDefinition, cmdParam);
             }
-
+            Map<String, String> globalParamMap = parameterApplicationService.getAllParamMap(processDefinition, command);
+            List<Property> globalParamList = parameterApplicationService.getAllParamList(processDefinition, command);
             // Recalculate global parameters after rerun.
             processInstance.setGlobalParams(ParameterUtils.curingGlobalParams(
-                    processDefinition.getGlobalParamMap(),
-                    processDefinition.getGlobalParamList(),
+                    globalParamMap,
+                    globalParamList,
                     commandTypeIfComplement,
                     processInstance.getScheduleTime()));
             processInstance.setProcessDefinition(processDefinition);
         }
+
         //reset command parameter
         if (processInstance.getCommandParam() != null) {
             Map<String, String> processCmdParam = JSONUtils.toMap(processInstance.getCommandParam());
@@ -853,6 +861,8 @@ public class ProcessService {
                 break;
             case REPEAT_RUNNING:
                 // delete the recover task names from command parameter
+                parameterApplicationService.replaceParamForRepeatRunning(processInstance);
+
                 if (cmdParam.containsKey(Constants.CMD_PARAM_RECOVERY_START_NODE_STRING)) {
                     cmdParam.remove(Constants.CMD_PARAM_RECOVERY_START_NODE_STRING);
                     processInstance.setCommandParam(JSONUtils.toJsonString(cmdParam));
@@ -2659,5 +2669,9 @@ public class ProcessService {
         if (delete != 1) {
             throw new ServiceException("delete command fail, id:" + commandId);
         }
+    }
+
+    public List<Property> getParamsForCompleteData(ProcessInstance processInstance) {
+        return parameterApplicationService.getForCompleteData(processInstance);
     }
 }
