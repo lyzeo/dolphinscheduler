@@ -118,4 +118,8 @@ public interface TaskDefinitionMapper extends BaseMapper<TaskDefinition> {
                                                 @Param("searchVal") String searchVal,
                                                 @Param("userId") int userId,
                                                 @Param("isAdmin") boolean isAdmin);
+
+    List<TaskDefinition> queryDependencyTaskInstancesUpgrade();
+
+    List<TaskDefinition> queryAll();
 }

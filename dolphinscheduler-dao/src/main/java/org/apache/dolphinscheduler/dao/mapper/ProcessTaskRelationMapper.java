@@ -172,4 +172,7 @@ public interface ProcessTaskRelationMapper extends BaseMapper<ProcessTaskRelatio
                     @Param("preTaskCode") long preTaskCode,
                     @Param("postTaskCode") long postTaskCode);
 
+    List<ProcessTaskRelation> queryByProcessDefinitionCodeAndProjectCode(@Param("projectCode") long projectCode,
+                                                                         @Param("processDefinitionCode") long processDefinitionCode);
+
 }

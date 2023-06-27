@@ -105,4 +105,18 @@
         </if>
         order by td.update_time desc
     </select>
+
+    <select id="queryDependencyTaskInstancesUpgrade" resultType="org.apache.dolphinscheduler.dao.entity.TaskDefinition">
+        select
+        <include refid="baseSql"/>
+        from t_ds_task_definition
+        where 1=1 and task_type = "DEPENDENT"
+    </select>
+
+    <select id="queryAll" resultType="org.apache.dolphinscheduler.dao.entity.TaskDefinition">
+        select
+        <include refid="baseSql"/>
+        from t_ds_task_definition
+        where 1=1
+    </select>
 </mapper>

@@ -170,4 +170,17 @@
             and post_task_code = #{postTaskCode}
         </if>
     </select>
+
+    <select id="queryByProcessDefinitionCodeAndProjectCode" resultType="org.apache.dolphinscheduler.dao.entity.ProcessTaskRelation">
+        select
+        <include refid="baseSql"/>
+        from t_ds_process_task_relation
+        WHERE 1=1
+        <if test="projectCode != 0">
+            and project_code = #{projectCode}
+        </if>
+        <if test="processDefinitionCode != 0">
+            and process_definition_code = #{processDefinitionCode}
+        </if>
+    </select>
 </mapper>

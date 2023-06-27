@@ -19,7 +19,10 @@ package org.apache.dolphinscheduler.dao;
 
 import org.apache.dolphinscheduler.common.enums.AlertStatus;
 import org.apache.dolphinscheduler.common.enums.ProfileType;
+import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.dao.entity.Alert;
+import org.apache.dolphinscheduler.dao.entity.TaskInstance;
+import org.apache.dolphinscheduler.dao.upgrade.UpgradeDao;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -30,7 +33,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @ActiveProfiles(ProfileType.H2)
 @RunWith(SpringRunner.class)
@@ -40,6 +45,7 @@ import java.util.List;
 public class AlertDaoTest {
     @Autowired
     private AlertDao alertDao;
+
 
     @Test
     public void testAlertDao() {
@@ -68,5 +74,53 @@ public class AlertDaoTest {
                              .filter(alert -> alert.getContent().contains(host))
                              .count();
         Assert.assertEquals(1L, count);
+    }
+
+    @Test
+    public void upgradeDepTaskCode() {
+            String taskParams = "{\n" +
+                    "    \"conditionResult\":{\n" +
+                    "        \"successNode\":[\n" +
+                    "            \"\"\n" +
+                    "        ],\n" +
+                    "        \"failedNode\":[\n" +
+                    "            \"\"\n" +
+                    "        ]\n" +
+                    "    },\n" +
+                    "    \"dependence\":{\n" +
+                    "        \"dependTaskList\":[\n" +
+                    "            {\n" +
+                    "                \"relation\":\"AND\",\n" +
+                    "                \"dependItemList\":[\n" +
+                    "                    {\n" +
+                    "                        \"dateValue\":\"today\",\n" +
+                    "                        \"cycle\":\"day\",\n" +
+                    "                        \"projectCode\":49,\n" +
+                    "                        \"definitionCode\":735,\n" +
+                    "                        \"depTaskCode\":\"dwd_sams_all_action_dtl_di_3\"\n" +
+                    "                    }\n" +
+                    "                ]\n" +
+                    "            }\n" +
+                    "        ],\n" +
+                    "        \"relation\":\"AND\"\n" +
+                    "    }\n" +
+                    "}";
+            Map<String, Object> map = JSONUtils.parseObject(taskParams, Map.class);
+            Object dependence = map.get("dependence");
+            Map<String, Object> dependMap = JSONUtils.parseObject(JSONUtils.toJsonString(dependence), Map.class);
+            Object dependTaskList = dependMap.get("dependTaskList");
+            List<Map<String, Object>> list = JSONUtils.parseObject(JSONUtils.toJsonString(dependTaskList),List.class);
+            for (Map<String, Object> val : list) {
+//                Map<String, String> dependTaskListMap = JSONUtils.parseObject(val, Map.class);
+                Object dependItemList = val.get("dependItemList");
+                List<Map<String, Object>> depItemMap = JSONUtils.parseObject(JSONUtils.toJsonString(dependItemList), List.class);
+                for (Map<String, Object> stringStringMap : depItemMap) {
+                    Object projectCode = stringStringMap.get("projectCode");
+                    Object definitionCode = stringStringMap.get("definitionCode");
+                    Object depTaskCode = stringStringMap.get("depTaskCode");
+                }
+
+            }
+
     }
 }

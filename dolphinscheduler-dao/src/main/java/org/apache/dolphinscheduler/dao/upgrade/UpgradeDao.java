@@ -17,6 +17,7 @@
 
 package org.apache.dolphinscheduler.dao.upgrade;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,14 +33,14 @@ import org.apache.dolphinscheduler.common.utils.CodeGenerateUtils;
 import org.apache.dolphinscheduler.common.utils.ConnectionUtils;
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.common.utils.ScriptRunner;
-import org.apache.dolphinscheduler.dao.entity.ProcessDefinition;
-import org.apache.dolphinscheduler.dao.entity.ProcessDefinitionLog;
-import org.apache.dolphinscheduler.dao.entity.ProcessTaskRelationLog;
-import org.apache.dolphinscheduler.dao.entity.TaskDefinitionLog;
+import org.apache.dolphinscheduler.dao.entity.*;
+import org.apache.dolphinscheduler.dao.mapper.ProcessTaskRelationMapper;
+import org.apache.dolphinscheduler.dao.mapper.TaskDefinitionMapper;
 import org.apache.dolphinscheduler.dao.upgrade.walmart.WalmartUpgradeDao;
 import org.apache.dolphinscheduler.spi.enums.DbType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
@@ -63,6 +64,12 @@ public abstract class UpgradeDao {
     protected final DataSource dataSource;
 
     protected final WalmartUpgradeDao walmartUpgradeDao;
+
+    @Autowired
+    private TaskDefinitionMapper taskDefinitionMapper;
+
+    @Autowired
+    private ProcessTaskRelationMapper processTaskRelationMapper;
 
     protected UpgradeDao(DataSource dataSource, WalmartUpgradeDao walmartUpgradeDao) {
         this.dataSource = dataSource;
@@ -769,5 +776,81 @@ public abstract class UpgradeDao {
             logger.error(e.getMessage(), e);
             throw new RuntimeException(e);
         }
+    }
+
+
+    public void upgradeDepTaskCode() {
+        List<TaskDefinition> taskDefinitionsAll = taskDefinitionMapper.queryAll();
+        List<TaskDefinition> taskDefinitions = taskDefinitionsAll.stream()
+                .filter(taskDefinition -> taskDefinition.getTaskType().equalsIgnoreCase(TaskType.DEPENDENT.getDesc()))
+                .collect(Collectors.toList());
+
+        for (TaskDefinition taskDefinition : taskDefinitions) {
+            logger.info("start to handle dependent node {}", taskDefinition.getName());
+            try {
+                String taskParams = taskDefinition.getTaskParams();
+                Map<String, Object> map = toMapConverter(taskParams);
+
+                Object dependence = map.get("dependence");
+                Map<String, Object> dependenceMap = toMapConverter(JSONUtils.toJsonString(dependence));
+
+                Object dependTaskList = dependenceMap.get("dependTaskList");
+                List<Map<String, Object>> list = toListMapConverter(JSONUtils.toJsonString(dependTaskList));
+
+                for (Map<String, Object> val : list) {
+                    Object dependItemList = val.get("dependItemList");
+                    List<Map<String, Object>> depItemMap = toListMapConverter(JSONUtils.toJsonString(dependItemList));
+                    for (Map<String, Object> stringStringMap : depItemMap) {
+                        logger.info("depend item :{}", stringStringMap);
+
+                        Object projectCode = stringStringMap.get("projectCode");
+                        Object definitionCode = stringStringMap.get("definitionCode");
+                        Object depTaskCode = stringStringMap.get("depTaskCode");
+
+                        List<ProcessTaskRelation> processTaskRelations = processTaskRelationMapper.queryByProcessDefinitionCodeAndProjectCode(Long.parseLong(projectCode.toString()), Long.parseLong(definitionCode.toString()));
+                        if (CollectionUtils.isEmpty(processTaskRelations)) {
+                            stringStringMap.put("depTaskCode", 0);
+                        } else {
+                            for (ProcessTaskRelation taskRelation : processTaskRelations) {
+                                TaskDefinition task = taskDefinitionMapper.queryByCode(taskRelation.getPostTaskCode());
+                                if (Objects.isNull(task)) {
+                                    stringStringMap.put("depTaskCode", 0);
+                                } else if (task.getName().equals(depTaskCode.toString())){
+                                    stringStringMap.put("depTaskCode", task.getCode());
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    val.put("dependItemList", depItemMap);
+                }
+
+                dependenceMap.put("dependTaskList", list);
+                map.put("dependence", dependenceMap);
+                logger.info("after fix the dependent node : {} ", map);
+
+                taskDefinition.setTaskParams(map.toString());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        for (TaskDefinition taskDefinition : taskDefinitions) {
+            try {
+                taskDefinitionMapper.updateById(taskDefinition);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public Map<String, Object> toMapConverter(String json) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+    }
+
+    public List<Map<String, Object>> toListMapConverter(String json) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
     }
 }
